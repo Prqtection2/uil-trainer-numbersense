@@ -1,17 +1,48 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { colors } from '@/lib/theme'
 import { units, numericalTricksContent } from '@/lib/topics'
+import { MasteryBadge } from '@/components/ui/mastery-badge'
+import { MasteryLevel } from '@/lib/constants/achievements'
+import { useSession } from 'next-auth/react'
+
+interface TopicStats {
+  level: MasteryLevel
+  accuracy: number
+  avgTime: number
+  attempts: number
+}
 
 export default function TopicsPage() {
   const searchParams = useSearchParams()
   const level = searchParams.get('level') || 'elementary'
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null)
+  const [topicStats, setTopicStats] = useState<Record<string, TopicStats>>({})
+  const { data: session } = useSession()
+
+  useEffect(() => {
+    if (session?.user?.id) {
+      fetch('/api/stats/all')
+        .then(res => res.json())
+        .then(stats => {
+          const formattedStats: Record<string, TopicStats> = {}
+          stats.forEach((stat: any) => {
+            formattedStats[stat.topicId] = {
+              level: stat.level,
+              accuracy: stat.accuracy,
+              avgTime: stat.avgTime,
+              attempts: stat.attempts
+            }
+          })
+          setTopicStats(formattedStats)
+        })
+    }
+  }, [session?.user?.id])
 
   const levelColor = {
     elementary: colors.elementary[500],
@@ -57,42 +88,68 @@ export default function TopicsPage() {
           <div className="mt-4 space-y-2">
             {unit.topics
               .filter(topic => topic.level === level)
-              .map((topic) => (
-                <div
-                  key={topic.id}
-                  className="block rounded-md border p-3 transition-colors hover:bg-gray-50"
-                  style={{ borderColor: colors.primary[200] }}
-                >
-                  <h3 className="font-medium" style={{ color: colors.primary[900] }}>
-                    {topic.name}
-                  </h3>
-                  <p className="mt-1 text-sm" style={{ color: colors.primary[600] }}>
-                    {topic.description}
-                  </p>
-                  <div className="mt-3 flex gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => setSelectedTopic(topic.id)}
-                      style={{
-                        borderColor: levelColor,
-                        color: levelColor
-                      }}
-                    >
-                      Learn
-                    </Button>
-                    <Link href={`/practice?topic=${topic.id}&level=${level}`}>
+              .map((topic) => {
+                const stats = topicStats[topic.id]
+                return (
+                  <div
+                    key={topic.id}
+                    className="block rounded-md border p-3 transition-colors hover:bg-gray-50"
+                    style={{ borderColor: colors.primary[200] }}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="font-medium" style={{ color: colors.primary[900] }}>
+                          {topic.name}
+                        </h3>
+                        <p className="mt-1 text-sm" style={{ color: colors.primary[600] }}>
+                          {topic.description}
+                        </p>
+                      </div>
+                      {stats && (
+                        <MasteryBadge level={stats.level} />
+                      )}
+                    </div>
+                    {stats && (
+                      <div className="mt-2 grid grid-cols-3 gap-2 text-sm text-gray-500">
+                        <div>
+                          <span>Accuracy: </span>
+                          <span className="font-medium">{Math.round(stats.accuracy)}%</span>
+                        </div>
+                        <div>
+                          <span>Avg Time: </span>
+                          <span className="font-medium">{Math.round(stats.avgTime)}s</span>
+                        </div>
+                        <div>
+                          <span>Attempts: </span>
+                          <span className="font-medium">{stats.attempts}</span>
+                        </div>
+                      </div>
+                    )}
+                    <div className="mt-3 flex gap-2">
                       <Button
+                        variant="outline"
+                        onClick={() => setSelectedTopic(topic.id)}
                         style={{
-                          backgroundColor: levelColor,
-                          color: 'white'
+                          borderColor: levelColor,
+                          color: levelColor
                         }}
                       >
-                        Practice
+                        Learn
                       </Button>
-                    </Link>
+                      <Link href={`/practice?topic=${topic.id}&level=${level}`}>
+                        <Button
+                          style={{
+                            backgroundColor: levelColor,
+                            color: 'white'
+                          }}
+                        >
+                          Practice
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
           </div>
         </div>
       ))}

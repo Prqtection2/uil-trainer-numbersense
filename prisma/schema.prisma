@@ -44,6 +44,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   stats         Stats[]
+  achievements  Achievement[]
 }
 
 model Stats {
@@ -57,6 +58,24 @@ model Stats {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  level     String   @default("UNRANKED") // UNRANKED, BRONZE, SILVER, GOLD
+  schoolLevel String @default("ELEMENTARY") // ELEMENTARY, MIDDLE, HIGH
+  bestAccuracy Float @default(0)
+  bestStreak Int @default(0)
+  totalQuestions Int @default(0)
+  correctAnswers Int @default(0)
 
   @@unique([userId, topicId])
+}
+
+model Achievement {
+  id          String   @id @default(cuid())
+  userId      String
+  topicId     String
+  level       String   // BRONZE, SILVER, GOLD
+  unlockedAt  DateTime @default(now())
+  requirements Json    // Store requirements met for this achievement
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, topicId, level])
 } 

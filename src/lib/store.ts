@@ -1,14 +1,17 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { MasteryLevel } from './constants/achievements'
+import { TopicProgress, calculateOverallProgress } from './utils/progress'
 
 export type Topic = {
   id: string
   name: string
   description: string
   level: 'elementary' | 'middle' | 'high'
-  progress: number
-  completed: number
-  total: number
+  mastery: MasteryLevel
+  attempts: number
+  bestAccuracy: number
+  bestTime: number
 }
 
 export type User = {
@@ -22,6 +25,7 @@ export type User = {
   }
   favorites: string[]
   achievements: string[]
+  topicProgress: TopicProgress[]
   stats: {
     totalQuestions: number
     correctAnswers: number
@@ -37,7 +41,7 @@ type State = {
   topics: Topic[]
   setUser: (user: User | null) => void
   addTopic: (topic: Topic) => void
-  updateProgress: (topicId: string, progress: number) => void
+  updateTopicMastery: (topicId: string, level: MasteryLevel) => void
   addFavorite: (topicId: string) => void
   removeFavorite: (topicId: string) => void
 }
@@ -49,12 +53,34 @@ export const useStore = create<State>()(
       topics: [],
       setUser: (user) => set({ user }),
       addTopic: (topic) => set((state) => ({ topics: [...state.topics, topic] })),
-      updateProgress: (topicId, progress) =>
-        set((state) => ({
-          topics: state.topics.map((t) =>
-            t.id === topicId ? { ...t, progress } : t
-          ),
-        })),
+      updateTopicMastery: (topicId, level) =>
+        set((state) => {
+          if (!state.user) return state
+
+          // Update topic progress
+          const newTopicProgress = [...state.user.topicProgress]
+          const existingIndex = newTopicProgress.findIndex(p => p.topicId === topicId)
+          
+          if (existingIndex >= 0) {
+            newTopicProgress[existingIndex] = { topicId, level }
+          } else {
+            newTopicProgress.push({ topicId, level })
+          }
+
+          // Calculate new overall progress
+          const newProgress = calculateOverallProgress(newTopicProgress)
+
+          return {
+            user: {
+              ...state.user,
+              topicProgress: newTopicProgress,
+              progress: newProgress
+            },
+            topics: state.topics.map((t) =>
+              t.id === topicId ? { ...t, mastery: level } : t
+            ),
+          }
+        }),
       addFavorite: (topicId) =>
         set((state) => ({
           user: state.user

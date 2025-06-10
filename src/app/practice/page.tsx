@@ -8,6 +8,8 @@ import { Modal } from '@/components/ui/modal'
 import { colors } from '@/lib/theme'
 import { units, numericalTricksContent } from '@/lib/topics'
 import { Question, QuestionDifficulty } from '@/lib/types'
+import { MasteryProgress } from '@/components/ui/mastery-progress'
+import { calculateMasteryLevel } from '@/lib/constants/achievements'
 
 export default function PracticePage() {
   const searchParams = useSearchParams()
@@ -91,6 +93,28 @@ export default function PracticePage() {
     })
 
     setShowExplanation(true)
+
+    // If this is the last question, don't show the next button
+    if (currentQuestionIndex === questions.length - 1) {
+      // Calculate and submit stats
+      const stats = calculateStats()
+      if (stats) {
+        fetch('/api/stats/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            topicId,
+            accuracy: stats.accuracy,
+            avgTime: stats.timePerQuestion,
+            correctAnswers: stats.correctAnswers,
+            totalQuestions: questions.length,
+            schoolLevel: level.toUpperCase(),
+          }),
+        })
+      }
+    }
   }
 
   const handleNext = () => {
@@ -115,11 +139,33 @@ export default function PracticePage() {
     
     const accuracy = (correctAnswers / questions.length) * 100
     const avgTime = sessionStats.times.reduce((a, b) => a + b, 0) / questions.length
+    const timePerQuestion = avgTime
+
+    // Calculate mastery level
+    const masteryLevel = calculateMasteryLevel(accuracy, timePerQuestion)
+
+    // Update stats in database
+    fetch('/api/stats/update', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        topicId,
+        accuracy,
+        avgTime: timePerQuestion,
+        correctAnswers,
+        totalQuestions: questions.length,
+        schoolLevel: level.toUpperCase(),
+      }),
+    })
 
     return {
       correctAnswers,
       accuracy: Math.round(accuracy),
       avgTime: Math.round(avgTime * 10) / 10,
+      masteryLevel,
+      timePerQuestion: Math.round(timePerQuestion * 10) / 10,
     }
   }
 
@@ -201,119 +247,142 @@ export default function PracticePage() {
             <p className="text-lg" style={{ color: colors.primary[900] }}>
               {currentQuestion.text}
             </p>
-            
-            <div className="mt-4">
+            <div className="mt-4 flex gap-4">
               <Input
                 type="number"
+                placeholder="Enter your answer"
                 value={answer}
                 onChange={(e) => setAnswer(e.target.value)}
-                placeholder="Enter your answer"
-                disabled={isAnswerCorrect !== null}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && isAnswerCorrect === null) {
+                  if (e.key === 'Enter' && !showExplanation) {
                     handleSubmit()
                   }
                 }}
+                className="flex-1"
               />
+              {!showExplanation ? (
+                <Button
+                  onClick={handleSubmit}
+                  style={{
+                    backgroundColor: levelColor,
+                    color: 'white'
+                  }}
+                >
+                  Submit
+                </Button>
+              ) : currentQuestionIndex < questions.length - 1 ? (
+                <Button
+                  onClick={handleNext}
+                  style={{
+                    backgroundColor: levelColor,
+                    color: 'white'
+                  }}
+                >
+                  Next
+                </Button>
+              ) : null}
             </div>
-
             {showExplanation && (
-              <div className="mt-4 rounded-lg bg-gray-50 p-4">
-                <p className="font-medium" style={{ color: isAnswerCorrect ? 'green' : 'red' }}>
+              <div className="mt-4">
+                <p
+                  className="text-lg font-medium"
+                  style={{
+                    color: isAnswerCorrect ? colors.success[600] : colors.error[600]
+                  }}
+                >
                   {isAnswerCorrect ? 'Correct!' : 'Incorrect'}
                 </p>
-                <p className="mt-2 text-sm" style={{ color: colors.primary[700], whiteSpace: 'pre-line', fontFamily: 'monospace' }}>
-                  {topic.generator.getExplanation(currentQuestion)}
+                <p className="mt-2" style={{ color: colors.primary[600] }}>
+                  The correct answer is: {currentQuestion.answer}
                 </p>
+                {topic.generator.getExplanation && (
+                  <pre className="mt-2 whitespace-pre-line font-mono text-sm" style={{ color: colors.primary[600] }}>
+                    {topic.generator.getExplanation(currentQuestion)}
+                  </pre>
+                )}
               </div>
-            )}
-          </div>
-
-          <div className="flex justify-end gap-2">
-            {isAnswerCorrect === null ? (
-              <Button
-                onClick={handleSubmit}
-                style={{
-                  backgroundColor: levelColor,
-                  color: 'white'
-                }}
-              >
-                Submit
-              </Button>
-            ) : (
-              <Button
-                onClick={handleNext}
-                style={{
-                  backgroundColor: levelColor,
-                  color: 'white'
-                }}
-              >
-                Next Question
-              </Button>
             )}
           </div>
         </>
       )}
 
-      {currentQuestionIndex === questions.length - 1 && isAnswerCorrect !== null && (
+      {!showSettings && currentQuestionIndex === questions.length - 1 && showExplanation && (
         <Modal
           isOpen={true}
           onClose={() => {}}
-          title="Practice Complete!"
+          title="Session Complete!"
         >
           <div className="space-y-6">
-            <div className="grid grid-cols-3 gap-4 text-center">
-              {(() => {
-                const stats = calculateStats()
-                if (!stats) return null
-                return (
-                  <>
-                    <div>
-                      <p className="text-sm" style={{ color: colors.primary[600] }}>Correct Answers</p>
-                      <p className="text-2xl font-bold" style={{ color: colors.primary[900] }}>
-                        {stats.correctAnswers}/{questions.length}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm" style={{ color: colors.primary[600] }}>Accuracy</p>
-                      <p className="text-2xl font-bold" style={{ color: colors.primary[900] }}>
-                        {stats.accuracy}%
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm" style={{ color: colors.primary[600] }}>Avg Time</p>
-                      <p className="text-2xl font-bold" style={{ color: colors.primary[900] }}>
-                        {stats.avgTime}s
-                      </p>
-                    </div>
-                  </>
-                )
-              })()}
-            </div>
+            {(() => {
+              const stats = calculateStats()
+              if (!stats) return null
 
-            <div className="flex gap-2">
-              <Button
-                className="flex-1"
-                variant="outline"
-                onClick={() => window.location.reload()}
-                style={{
-                  borderColor: levelColor,
-                  color: levelColor
-                }}
-              >
-                Try Again
-              </Button>
-              <Button
-                className="flex-1"
-                onClick={() => window.history.back()}
-                style={{
-                  backgroundColor: levelColor,
-                  color: 'white'
-                }}
-              >
-                Back to Topics
-              </Button>
-            </div>
+              return (
+                <>
+                  <div className="space-y-2">
+                    <h3 className="font-semibold" style={{ color: colors.primary[900] }}>
+                      Results
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-500">Accuracy</p>
+                        <p className="text-lg font-medium">{stats.accuracy}%</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Average Time</p>
+                        <p className="text-lg font-medium">{stats.avgTime}s</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Correct Answers</p>
+                        <p className="text-lg font-medium">{stats.correctAnswers}/{questions.length}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Time per Question</p>
+                        <p className="text-lg font-medium">{stats.timePerQuestion}s</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h3 className="font-semibold" style={{ color: colors.primary[900] }}>
+                      Mastery Progress
+                    </h3>
+                    <MasteryProgress
+                      currentLevel={stats.masteryLevel}
+                      accuracy={stats.accuracy}
+                      timePerQuestion={stats.timePerQuestion}
+                    />
+                  </div>
+
+                  <div className="flex gap-4">
+                    <Button
+                      className="flex-1"
+                      onClick={() => {
+                        setShowSettings(true)
+                        setCurrentQuestionIndex(0)
+                        setQuestions([])
+                        setAnswer('')
+                        setIsAnswerCorrect(null)
+                        setShowExplanation(false)
+                      }}
+                      style={{
+                        backgroundColor: colors.primary[500],
+                        color: 'white'
+                      }}
+                    >
+                      Practice Again
+                    </Button>
+                    <Button
+                      className="flex-1"
+                      onClick={() => router.push('/topics')}
+                      variant="outline"
+                    >
+                      Back to Topics
+                    </Button>
+                  </div>
+                </>
+              )
+            })()}
           </div>
         </Modal>
       )}
