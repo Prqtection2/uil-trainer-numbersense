@@ -10,12 +10,44 @@ import { units, numericalTricksContent } from '@/lib/topics'
 import { MasteryBadge } from '@/components/ui/mastery-badge'
 import { MasteryLevel } from '@/lib/constants/achievements'
 import { useSession } from 'next-auth/react'
+import { CollapsibleSection } from '@/components/ui/collapsible-section'
 
 interface TopicStats {
   level: MasteryLevel
   accuracy: number
   avgTime: number
   attempts: number
+}
+
+// Helper function to group topics by their prefix (e.g., "1.1", "1.2.1")
+function groupTopicsByPrefix(topics: any[]) {
+  const groups: Record<string, any[]> = {}
+  
+  topics.forEach(topic => {
+    const name = topic.name
+    const match = name.match(/Topic (\d+\.\d+(?:\.\d+)?) -/)
+    if (match) {
+      const prefix = match[1]
+      const mainPrefix = prefix.split('.').slice(0, 2).join('.')
+      if (!groups[mainPrefix]) {
+        groups[mainPrefix] = []
+      }
+      groups[mainPrefix].push(topic)
+    }
+  })
+
+  return groups
+}
+
+const getTopicTitle = (prefix: string) => {
+  switch (prefix) {
+    case '1.1':
+      return 'Topic 1.1 - FOIL When Multiplying'
+    case '1.2':
+      return 'Topic 1.2 - Multiplying: The Basics'
+    default:
+      return `Topic ${prefix}`
+  }
 }
 
 export default function TopicsPage() {
@@ -50,6 +82,69 @@ export default function TopicsPage() {
     high: colors.high[500]
   }[level] || colors.primary[500]
 
+  const renderTopic = (topic: any) => {
+    const stats = topicStats[topic.id]
+    return (
+      <div
+        key={topic.id}
+        className="block rounded-md border p-3 transition-colors hover:bg-gray-50"
+        style={{ borderColor: colors.primary[200] }}
+      >
+        <div className="flex items-start justify-between">
+          <div>
+            <h3 className="font-medium" style={{ color: colors.primary[900] }}>
+              {topic.name}
+            </h3>
+            <p className="mt-1 text-sm" style={{ color: colors.primary[600] }}>
+              {topic.description}
+            </p>
+          </div>
+          {stats && (
+            <MasteryBadge level={stats.level} />
+          )}
+        </div>
+        {stats && (
+          <div className="mt-2 grid grid-cols-3 gap-2 text-sm text-gray-500">
+            <div>
+              <span>Accuracy: </span>
+              <span className="font-medium">{Math.round(stats.accuracy)}%</span>
+            </div>
+            <div>
+              <span>Avg Time: </span>
+              <span className="font-medium">{Math.round(stats.avgTime)}s</span>
+            </div>
+            <div>
+              <span>Attempts: </span>
+              <span className="font-medium">{stats.attempts}</span>
+            </div>
+          </div>
+        )}
+        <div className="mt-3 flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setSelectedTopic(topic.id)}
+            style={{
+              borderColor: levelColor,
+              color: levelColor
+            }}
+          >
+            Learn
+          </Button>
+          <Link href={`/practice?topic=${topic.id}&level=${level}`}>
+            <Button
+              style={{
+                backgroundColor: levelColor,
+                color: 'white'
+              }}
+            >
+              Practice
+            </Button>
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
@@ -77,82 +172,38 @@ export default function TopicsPage() {
         </div>
       </div>
 
-      {units.map((unit) => (
-        <div
-          key={unit.id}
-          className="rounded-lg bg-white p-6 shadow-sm"
-        >
-          <h2 className="text-xl font-semibold" style={{ color: colors.primary[900] }}>
-            {unit.name}
-          </h2>
-          <div className="mt-4 space-y-2">
-            {unit.topics
-              .filter(topic => topic.level === level)
-              .map((topic) => {
-                const stats = topicStats[topic.id]
+      {units.map((unit) => {
+        const filteredTopics = unit.topics.filter(topic => topic.level === level)
+        const topicGroups = groupTopicsByPrefix(filteredTopics)
+        
+        return (
+          <CollapsibleSection
+            key={unit.id}
+            title={unit.name}
+            level={1}
+          >
+            <div className="mt-4 space-y-4">
+              {Object.entries(topicGroups).map(([prefix, topics]) => {
+                const mainTopic = topics[0]
+                const title = getTopicTitle(prefix)
+
                 return (
-                  <div
-                    key={topic.id}
-                    className="block rounded-md border p-3 transition-colors hover:bg-gray-50"
-                    style={{ borderColor: colors.primary[200] }}
+                  <CollapsibleSection
+                    key={prefix}
+                    title={title}
+                    level={2}
+                    defaultExpanded={false}
                   >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="font-medium" style={{ color: colors.primary[900] }}>
-                          {topic.name}
-                        </h3>
-                        <p className="mt-1 text-sm" style={{ color: colors.primary[600] }}>
-                          {topic.description}
-                        </p>
-                      </div>
-                      {stats && (
-                        <MasteryBadge level={stats.level} />
-                      )}
+                    <div className="mt-2 space-y-2">
+                      {topics.map(topic => renderTopic(topic))}
                     </div>
-                    {stats && (
-                      <div className="mt-2 grid grid-cols-3 gap-2 text-sm text-gray-500">
-                        <div>
-                          <span>Accuracy: </span>
-                          <span className="font-medium">{Math.round(stats.accuracy)}%</span>
-                        </div>
-                        <div>
-                          <span>Avg Time: </span>
-                          <span className="font-medium">{Math.round(stats.avgTime)}s</span>
-                        </div>
-                        <div>
-                          <span>Attempts: </span>
-                          <span className="font-medium">{stats.attempts}</span>
-                        </div>
-                      </div>
-                    )}
-                    <div className="mt-3 flex gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => setSelectedTopic(topic.id)}
-                        style={{
-                          borderColor: levelColor,
-                          color: levelColor
-                        }}
-                      >
-                        Learn
-                      </Button>
-                      <Link href={`/practice?topic=${topic.id}&level=${level}`}>
-                        <Button
-                          style={{
-                            backgroundColor: levelColor,
-                            color: 'white'
-                          }}
-                        >
-                          Practice
-                        </Button>
-                      </Link>
-                    </div>
-                  </div>
+                  </CollapsibleSection>
                 )
               })}
-          </div>
-        </div>
-      ))}
+            </div>
+          </CollapsibleSection>
+        )
+      })}
 
       <Modal
         isOpen={!!selectedTopic}

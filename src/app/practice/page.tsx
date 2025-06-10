@@ -31,15 +31,31 @@ export default function PracticePage() {
   })
 
   // Find the topic
-  const topic = units.flatMap(unit => unit.topics).find(t => t.id === topicId)
+  const allTopics = units.flatMap(unit => unit.topics)
+  const topic = allTopics.find(t => t.id === topicId)
   const topicContent = topicId ? numericalTricksContent[topicId] : null
 
-  // Redirect to topics if no topic is selected
+  // Debug logging
   useEffect(() => {
-    if (!topicId) {
+    console.log('Debug Info:')
+    console.log('Topic ID:', topicId)
+    console.log('All Topics:', allTopics)
+    console.log('Found Topic:', topic)
+    console.log('Topic Content:', topicContent)
+    console.log('Content Keys:', Object.keys(numericalTricksContent))
+    console.log('Units:', units)
+  }, [topicId, topic, topicContent])
+
+  // Redirect to topics if no topic is selected or found
+  useEffect(() => {
+    if (!topicId || !topic || !topicContent) {
+      console.log('Redirecting because:')
+      console.log('- No topicId:', !topicId)
+      console.log('- No topic:', !topic)
+      console.log('- No topicContent:', !topicContent)
       router.push('/topics')
     }
-  }, [topicId, router])
+  }, [topicId, topic, topicContent, router])
 
   // Get difficulty based on level
   const getDifficultyForLevel = (level: string): QuestionDifficulty => {
