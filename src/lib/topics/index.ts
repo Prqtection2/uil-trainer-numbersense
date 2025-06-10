@@ -3,6 +3,7 @@ import { foilMultiplicationGenerator } from './generators/foil'
 import { multiplyBy11Generator } from './generators/multiply-by-11'
 import { multiplyBy101Generator } from './generators/multiply-by-101'
 import { multiplyBy25Generator } from './generators/multiply-by-25'
+import { multiplyBy75Generator } from './generators/multiply-by-75'
 
 export interface Unit {
   id: string
@@ -233,18 +234,7 @@ Practice with larger numbers:
   // Multiply by 101 - High School
   'multiply-by-101-high': {
     title: 'Advanced 101 Multiplication',
-    content: `Challenge yourself with larger numbers!
-
-For three-digit numbers:
-• Same pattern applies
-• Example: 234 × 101
-  = 23,634
-• Notice: 234 appears in 23,634!
-
-Advanced Patterns:
-• Try finding patterns with 1001, 1111
-• Connect to algebraic concepts
-• (x + 1)(x² + 1) patterns`,
+    content: `Master multiplying two and three-digit numbers by 101 mentally`,
     examples: [
       '234 × 101 = 23,634',
       '567 × 101 = 57,267',
@@ -332,6 +322,53 @@ PATTERNS:
       '2.6 × 2.5 = 6.5',
       '15 × 25 × 11 = 4,125',
       '7/25 vs 0.25'
+    ]
+  },
+
+  // Multiply by 75 - Elementary
+  'multiply-by-75-elementary': {
+    title: 'Multiply by 75 (Basic)',
+    content: `Master multiplying and dividing by 75 using the ¾ × 100 trick!
+
+The Secret Trick:
+• 75 is the same as 3/4 × 100
+• So instead of multiplying by 75...
+  1. Divide by 4
+  2. Multiply by 3
+  3. Add two zeros (multiply by 100)
+
+Example:
+• 84 × 75
+  1. 84 ÷ 4 = 21
+  2. 21 × 3 = 63
+  3. 63 × 100 = 6,300
+• That's it! Much easier than multiplying by 75 directly!`,
+    examples: [
+      '84 × 75 = 6,300',
+      '40 × 75 = 3,000',
+      '32 × 75 = 2,400'
+    ]
+  },
+
+  // Multiply by 75 - Middle School
+  'multiply-by-75-middle': {
+    title: 'Multiply and Divide by 75',
+    content: 'Master multiplication and division by 75, including decimals like 7.5',
+    examples: [
+      '148 × 75 = 11,100',
+      '400 ÷ 75 = 5.33',
+      '40 × 7.5 = 300'
+    ]
+  },
+
+  // Multiply by 75 - High School
+  'multiply-by-75-high': {
+    title: 'Advanced 75 Operations',
+    content: 'Challenge yourself with complex calculations involving 75, fractions, and combined operations',
+    examples: [
+      '15 × 75 × 11 = 12,375',
+      '7/75 vs 0.0933',
+      '1.1 ÷ 7.5 = 0.1467'
     ]
   }
 }
@@ -512,6 +549,63 @@ export const units: Unit[] = [
           bestTime: 0,
           accuracy: 0
         }
+      },
+
+      // Multiply by 75 - Elementary
+      {
+        id: 'multiply-by-75-elementary',
+        name: 'Multiply by 75 (Basic)',
+        description: 'Master multiplying and dividing by 75 using the ¾ × 100 trick',
+        level: 'elementary',
+        generator: multiplyBy75Generator,
+        stats: {
+          attempts: 0,
+          avgTime: 0,
+          bestTime: 0,
+          accuracy: 0
+        }
+      },
+      // Multiply by 75 - Middle School
+      {
+        id: 'multiply-by-75-middle',
+        name: 'Multiply and Divide by 75',
+        description: 'Master multiplication and division by 75, including decimals like 7.5',
+        level: 'middle',
+        generator: multiplyBy75Generator,
+        stats: {
+          attempts: 0,
+          avgTime: 0,
+          bestTime: 0,
+          accuracy: 0
+        }
+      },
+      // Multiply by 75 - High School
+      {
+        id: 'multiply-by-75-high',
+        name: 'Advanced 75 Operations',
+        description: 'Challenge yourself with complex calculations involving 75, fractions, and combined operations',
+        level: 'high',
+        generator: multiplyBy75Generator,
+        stats: {
+          attempts: 0,
+          avgTime: 0,
+          bestTime: 0,
+          accuracy: 0
+        }
+      }
+    ]
+  },
+  {
+    id: 'algebraic-tricks',
+    name: 'Algebraic Tricks',
+    description: 'Learn essential algebraic tricks for fast calculations',
+    topics: [
+      {
+        id: 'foil',
+        name: 'FOIL Multiplication',
+        description: 'Learn to multiply two-digit numbers using the FOIL method',
+        level: 'middle',
+        generator: foilMultiplicationGenerator
       }
     ]
   }
